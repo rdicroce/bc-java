@@ -48,14 +48,20 @@ public class Certificate
 
     protected final byte[] certificateRequestContext;
     protected final CertificateEntry[] certificateEntryList;
+    protected final short certificateType;
 
     public Certificate(TlsCertificate[] certificateList)
     {
         this(null, convert(certificateList));
     }
 
-    // TODO[tls13] Prefer to manage the certificateRequestContext internally only? 
     public Certificate(byte[] certificateRequestContext, CertificateEntry[] certificateEntryList)
+    {
+        this(CertificateType.X509, certificateRequestContext, certificateEntryList);
+    }
+
+    // TODO[tls13] Prefer to manage the certificateRequestContext internally only?
+    public Certificate(short certificateType, byte[] certificateRequestContext, CertificateEntry[] certificateEntryList)
     {
         if (null != certificateRequestContext && !TlsUtils.isValidUint8(certificateRequestContext.length))
         {
@@ -68,6 +74,7 @@ public class Certificate
 
         this.certificateRequestContext = TlsUtils.clone(certificateRequestContext);
         this.certificateEntryList = certificateEntryList;
+        this.certificateType = certificateType;
     }
 
     public byte[] getCertificateRequestContext()
@@ -101,7 +108,7 @@ public class Certificate
 
     public short getCertificateType()
     {
-        return CertificateType.X509;
+        return certificateType;
     }
 
     public int getLength()
@@ -193,6 +200,8 @@ public class Certificate
     /**
      * Parse a {@link Certificate} from an {@link InputStream}.
      *
+     * @param type
+     *            the {@link CertificateType} according to the IANA TLS Certificate Types registry
      * @param context
      *            the {@link TlsContext} of the current connection.
      * @param messageInput
@@ -201,7 +210,7 @@ public class Certificate
      * @return a {@link Certificate} object.
      * @throws IOException
      */
-    public static Certificate parse(TlsContext context, InputStream messageInput, OutputStream endPointHashOutput)
+    public static Certificate parse(short type, TlsContext context, InputStream messageInput, OutputStream endPointHashOutput)
         throws IOException
     {
         final boolean isTLSv13 = TlsUtils.isTLSv13(context);
@@ -217,7 +226,7 @@ public class Certificate
         {
             return !isTLSv13 ? EMPTY_CHAIN
                 :  certificateRequestContext.length < 1 ? EMPTY_CHAIN_TLS13
-                :  new Certificate(certificateRequestContext, EMPTY_CERT_ENTRIES);
+                :  new Certificate(type, certificateRequestContext, EMPTY_CERT_ENTRIES);
         }
 
         byte[] certListData = TlsUtils.readFully(totalLength, messageInput);
@@ -228,7 +237,7 @@ public class Certificate
         while (buf.available() > 0)
         {
             byte[] derEncoding = TlsUtils.readOpaque24(buf, 1);
-            TlsCertificate cert = context.getCrypto().createCertificate(derEncoding);
+            TlsCertificate cert = context.getCrypto().createCertificate(type, derEncoding);
 
             if (certificate_list.isEmpty() && endPointHashOutput != null)
             {
@@ -252,7 +261,7 @@ public class Certificate
             certificateList[i] = (CertificateEntry)certificate_list.elementAt(i);
         }
 
-        return new Certificate(certificateRequestContext, certificateList);
+        return new Certificate(type, certificateRequestContext, certificateList);
     }
 
     protected static void calculateEndPointHash(TlsContext context, TlsCertificate cert, byte[] encoding,
