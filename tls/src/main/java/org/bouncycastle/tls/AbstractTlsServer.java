@@ -535,7 +535,8 @@ public abstract class AbstractTlsServer
                 }
 
                 short selectedType = -1;
-                for (int i = 0; i < preferredTypes.length; i++) {
+                for (int i = 0; i < preferredTypes.length; i++)
+                {
                     if (Arrays.contains(nonPreferredTypes, preferredTypes[i]))
                     {
                         selectedType = preferredTypes[i];

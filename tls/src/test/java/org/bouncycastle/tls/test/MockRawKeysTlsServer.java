@@ -102,6 +102,18 @@ class MockRawKeysTlsServer extends DefaultTlsServer
     }
 
     @Override
+    protected boolean allowCertificateStatus()
+    {
+        return serverCertType == CertificateType.RawPublicKey ? false : super.allowCertificateStatus();
+    }
+
+    @Override
+    protected boolean allowMultiCertStatus()
+    {
+        return serverCertType == CertificateType.RawPublicKey ? false : super.allowMultiCertStatus();
+    }
+
+    @Override
     public CertificateRequest getCertificateRequest() throws IOException
     {
         if (clientCertType < 0)

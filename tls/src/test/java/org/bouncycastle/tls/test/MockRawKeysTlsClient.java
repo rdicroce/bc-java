@@ -5,12 +5,14 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.Vector;
 
 import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
 import org.bouncycastle.crypto.util.SubjectPublicKeyInfoFactory;
 import org.bouncycastle.tls.Certificate;
 import org.bouncycastle.tls.CertificateEntry;
 import org.bouncycastle.tls.CertificateRequest;
+import org.bouncycastle.tls.CertificateStatusRequest;
 import org.bouncycastle.tls.CertificateType;
 import org.bouncycastle.tls.CipherSuite;
 import org.bouncycastle.tls.DefaultTlsClient;
@@ -65,6 +67,18 @@ class MockRawKeysTlsClient extends DefaultTlsClient
     protected short[] getAllowedServerCertificateTypes()
     {
         return offerServerCertTypes;
+    }
+
+    @Override
+    protected CertificateStatusRequest getCertificateStatusRequest()
+    {
+        return serverCertType == CertificateType.RawPublicKey ? null : super.getCertificateStatusRequest();
+    }
+
+    @Override
+    protected Vector getMultiCertStatusRequest()
+    {
+        return serverCertType == CertificateType.RawPublicKey ? null : super.getMultiCertStatusRequest();
     }
 
     @Override

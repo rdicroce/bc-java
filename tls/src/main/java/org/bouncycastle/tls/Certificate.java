@@ -181,8 +181,13 @@ public class Certificate
             }
         }
 
-        TlsUtils.checkUint24(totalLength);
-        TlsUtils.writeUint24((int)totalLength, messageOutput);
+        // RFC 7250 indicates the raw key is not wrapped in a cert list like X509 is
+        // but RFC 8446 wraps it in a CertificateEntry, which is inside certificate_list
+        if (isTLSv13 || certificateType != CertificateType.RawPublicKey)
+        {
+            TlsUtils.checkUint24(totalLength);
+            TlsUtils.writeUint24((int)totalLength, messageOutput);
+        }
 
         for (int i = 0; i < count; ++i)
         {
@@ -236,7 +241,19 @@ public class Certificate
         Vector certificate_list = new Vector();
         while (buf.available() > 0)
         {
-            byte[] derEncoding = TlsUtils.readOpaque24(buf, 1);
+            // RFC 7250 indicates the raw key is not wrapped in a cert list like X509 is
+            // but RFC 8446 wraps it in a CertificateEntry, which is inside certificate_list
+            byte[] derEncoding;
+            if (isTLSv13 || type != CertificateType.RawPublicKey)
+            {
+                derEncoding = TlsUtils.readOpaque24(buf, 1);
+            }
+            else
+            {
+                derEncoding = certListData;
+                buf.skip(totalLength);
+            }
+
             TlsCertificate cert = context.getCrypto().createCertificate(type, derEncoding);
 
             if (certificate_list.isEmpty() && endPointHashOutput != null)
