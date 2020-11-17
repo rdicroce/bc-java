@@ -32,11 +32,7 @@ public class BcTlsRawKeyCertificate implements TlsCertificate
     protected final BcTlsCrypto crypto;
     protected final SubjectPublicKeyInfo keyInfo;
 
-    protected DHPublicKeyParameters pubKeyDH = null;
-    protected ECPublicKeyParameters pubKeyEC = null;
-    protected Ed25519PublicKeyParameters pubKeyEd25519 = null;
-    protected Ed448PublicKeyParameters pubKeyEd448 = null;
-    protected RSAKeyParameters pubKeyRSA = null;
+    protected AsymmetricKeyParameter pubKey;
 
     public BcTlsRawKeyCertificate(BcTlsCrypto crypto, byte[] keyInfo)
     {
@@ -163,7 +159,7 @@ public class BcTlsRawKeyCertificate implements TlsCertificate
         return -1;
     }
 
-    protected DHPublicKeyParameters getPubKeyDH() throws IOException
+    public DHPublicKeyParameters getPubKeyDH() throws IOException
     {
         try
         {
@@ -253,7 +249,7 @@ public class BcTlsRawKeyCertificate implements TlsCertificate
         case KeyExchangeAlgorithm.DH_RSA:
         {
             validateKeyUsage(KeyUsage.keyAgreement);
-            this.pubKeyDH = getPubKeyDH();
+            getPubKeyDH();
             return this;
         }
 
@@ -261,7 +257,7 @@ public class BcTlsRawKeyCertificate implements TlsCertificate
         case KeyExchangeAlgorithm.ECDH_RSA:
         {
             validateKeyUsage(KeyUsage.keyAgreement);
-            this.pubKeyEC = getPubKeyEC();
+            getPubKeyEC();
             return this;
         }
         }
@@ -274,7 +270,7 @@ public class BcTlsRawKeyCertificate implements TlsCertificate
             case KeyExchangeAlgorithm.RSA_PSK:
             {
                 validateKeyUsage(KeyUsage.keyEncipherment);
-                this.pubKeyRSA = getPubKeyRSA();
+                getPubKeyRSA();
                 return this;
             }
             }
@@ -283,16 +279,20 @@ public class BcTlsRawKeyCertificate implements TlsCertificate
         throw new TlsFatalAlert(AlertDescription.certificate_unknown);
     }
 
-    protected AsymmetricKeyParameter getPublicKey() throws IOException
+    public AsymmetricKeyParameter getPublicKey() throws IOException
     {
-        try
+        if (pubKey == null)
         {
-            return PublicKeyFactory.createKey(keyInfo);
+            try
+            {
+                pubKey = PublicKeyFactory.createKey(keyInfo);
+            }
+            catch (RuntimeException e)
+            {
+                throw new TlsFatalAlert(AlertDescription.unsupported_certificate, e);
+            }
         }
-        catch (RuntimeException e)
-        {
-            throw new TlsFatalAlert(AlertDescription.unsupported_certificate, e);
-        }
+        return pubKey;
     }
 
     protected boolean supportsKeyUsage(int keyUsageBits)
